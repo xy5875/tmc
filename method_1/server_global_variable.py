@@ -40,7 +40,7 @@ class Server_Status(object):
     ACC_TAR=0
     TRAIN_CLASS_NEED =  [i for i in range(10)]
     JISHU = [0 for _ in range(10)]
-    
+    SHOT_LIST= [-1 for _ in range(10)]
     
     def __init__(self):
         pass

@@ -4,117 +4,295 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
+from model import ResNet34 as Model
 
-class TrainDataset(Dataset):
-    class_shot = None
-    def __init__(self, dataset_path, list=[0,4,5,9], cuda=1):
-        self.root_folder = dataset_path
-        self.transform = transforms.Compose([
-            transforms.ToTensor()
-        ])
-        self.cuda = cuda
+# class TrainDataset(Dataset):
+#     class_shot = None
+#     def __init__(self, dataset_path, list=[5], cuda=1):
+#         self.root_folder = dataset_path
+#         self.transform = transforms.Compose([
+#             transforms.ToTensor()
+#         ])
+#         self.cuda = cuda
 
-        self.data = None
-        # Randomly choose class_shot once during initialization
-        if TrainDataset.class_shot is None:
-            labels = [int(label) for label in os.listdir(self.root_folder)]
-            labels_in_listA = [label for label in labels if label in list]
+#         self.data = None
+#         # Randomly choose class_shot once during initialization
+#         if TrainDataset.class_shot is None:
+#             labels = [int(label) for label in os.listdir(self.root_folder)]
+#             labels_in_listA = [label for label in labels if label in list]
     
-            if labels_in_listA:
-                TrainDataset.class_shot = random.choice(labels_in_listA)
-            else:
-                print("listA 中的元素都不在 labels 中，无法选择在 listA 中的元素。")
-        self.load_data()
+#             if labels_in_listA:
+#                 TrainDataset.class_shot = random.choice(labels_in_listA)
+#             else:
+#                 print("listA 中的元素都不在 labels 中，无法选择在 listA 中的元素。")
+#         self.load_data()
 
-    def load_data(self):
-        labels = [int(label) for label in os.listdir(self.root_folder)]
-        print("shot is ", TrainDataset.class_shot)
-        positive_samples = []
-        negative_samples = []
-        # Load positive samples (label = 0)
-        for label in labels:
-            label_folder = os.path.join(self.root_folder, str(label))
-            image_list = os.listdir(label_folder)
+#     def load_data(self):
+#         labels = [int(label) for label in os.listdir(self.root_folder)]
+#         print("shot is ", TrainDataset.class_shot)
+#         positive_samples = []
+#         negative_samples = []
+#         # Load positive samples (label = 0)
+#         for label in labels:
+#             label_folder = os.path.join(self.root_folder, str(label))
+#             image_list = os.listdir(label_folder)
 
-            for img_name in image_list:
-                image_path = os.path.join(label_folder, img_name)
-                image = Image.open(image_path).convert('RGB')
+#             for img_name in image_list:
+#                 image_path = os.path.join(label_folder, img_name)
+#                 image = Image.open(image_path).convert('RGB')
 
-                if self.transform:
-                    image = self.transform(image)
+#                 if self.transform:
+#                     image = self.transform(image)
 
-                if label == TrainDataset.class_shot:
-                    label_tensor = torch.tensor(0)
-                    positive_samples.append((image, label_tensor))
+#                 if label == TrainDataset.class_shot:
+#                     label_tensor = torch.tensor(0)
+#                     positive_samples.append((image, label_tensor))
 
-        # Check if the number of positive samples is 1
-        if len(positive_samples) == 1:
-            # Duplicate the positive sample 10 times
-            positive_samples *= 10
+#         # Check if the number of positive samples is 1
+#         if len(positive_samples) == 1:
+#             # Duplicate the positive sample 10 times
+#             positive_samples *= 10
 
-        # Load negative samples (label = 1)
-        for label in labels:
-            label_folder = os.path.join(self.root_folder, str(label))
-            image_list = os.listdir(label_folder)
+#         # Load negative samples (label = 1)
+#         for label in labels:
+#             label_folder = os.path.join(self.root_folder, str(label))
+#             image_list = os.listdir(label_folder)
 
-            for img_name in image_list:
-                image_path = os.path.join(label_folder, img_name)
-                image = Image.open(image_path).convert('RGB')
+#             for img_name in image_list:
+#                 image_path = os.path.join(label_folder, img_name)
+#                 image = Image.open(image_path).convert('RGB')
 
-                if self.transform:
-                    image = self.transform(image)
+#                 if self.transform:
+#                     image = self.transform(image)
 
-                if label != TrainDataset.class_shot:
-                    label_tensor = torch.tensor(1)
-                    negative_samples.append((image, label_tensor))
+#                 if label != TrainDataset.class_shot:
+#                     label_tensor = torch.tensor(1)
+#                     negative_samples.append((image, label_tensor))
 
-        # Randomly select the same number of negative samples
-        num_positive_samples = len(positive_samples)
-        num_negative_samples = len(negative_samples)
+#         # Randomly select the same number of negative samples
+#         num_positive_samples = len(positive_samples)
+#         num_negative_samples = len(negative_samples)
         
-        # Repeat sampling from negative samples until it meets the requirement
-        while num_negative_samples < num_positive_samples:
-            negative_samples.extend(random.choices(negative_samples, k=num_positive_samples - num_negative_samples))
-            num_negative_samples = len(negative_samples)
+#         # Repeat sampling from negative samples until it meets the requirement
+#         while num_negative_samples < num_positive_samples:
+#             negative_samples.extend(random.choices(negative_samples, k=num_positive_samples - num_negative_samples))
+#             num_negative_samples = len(negative_samples)
 
-        # Randomly select the same number of negative samples
-        negative_samples = random.sample(negative_samples, num_positive_samples)
+#         # Randomly select the same number of negative samples
+#         negative_samples = random.sample(negative_samples, num_positive_samples)
 
-        # Combine positive and negative samples
-        data = positive_samples + negative_samples
-        random.shuffle(data)
+#         # Combine positive and negative samples
+#         data = positive_samples + negative_samples
+#         random.shuffle(data)
 
-        if self.cuda:
-            data = [(image.cuda(self.cuda), label_tensor.cuda(self.cuda)) for image, label_tensor in data]
+#         if self.cuda:
+#             data = [(image.cuda(self.cuda), label_tensor.cuda(self.cuda)) for image, label_tensor in data]
 
-        self.data = data
+#         self.data = data
+
+#     def __len__(self):
+#         return len(self.data)
+
+#     def __getitem__(self, index):
+#         return self.data[index]
+
+
+# # Example usage:
+# dataset_path = '/home/dell/xy/TMC/data/train/4'
+# dataset = TrainDataset(dataset_path=dataset_path) 
+# class_shot = dataset.class_shot
+# dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+
+
+import os
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, Dataset
+from PIL import Image
+
+class CustomDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        self.images = []
+        self.labels = []
+
+        # 遍历数据集文件夹，收集图像和标签
+        for label in os.listdir(self.root_dir):
+            label_dir = os.path.join(self.root_dir, label)
+            for image_name in os.listdir(label_dir):
+                self.images.append(os.path.join(label_dir, image_name))
+                self.labels.append(int(label))
 
     def __len__(self):
-        return len(self.data)
+        return len(self.images)
 
-    def __getitem__(self, index):
-        return self.data[index]
+    def __getitem__(self, idx):
+        image_path = self.images[idx]
+        label = self.labels[idx]
+        image = Image.open(image_path).convert('RGB')
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+# 设置数据集根目录和数据转换
+data_root = '/home/dell/xy/TMC/data/xy'
+transform = transforms.Compose([
+    
+    transforms.ToTensor()
+     # 假设这是你的数据归一化
+])
+
+# 创建自定义数据集
+custom_dataset = CustomDataset(root_dir=data_root, transform=transform)
+
+# 创建数据加载器
+batch_size = 32
+dataloader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=True)
 
 
-# Example usage:
-dataset_path = '/home/dell/xy/TMC/data/train/8'
-dataset = TrainDataset(dataset_path=dataset_path) 
-class_shot = dataset.class_shot
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-# 初始化计数器
-print("class_shot is ",class_shot)
-count_0 = 0
-count_1 = 0
 
-for batch_idx, (images, labels) in enumerate(dataloader):
-    # 统计每个批次中标签为 0 和 1 的数量
-    print("label is ",labels)
-    count_0 += (labels == 0).sum().item()
-    count_1 += (labels == 1).sum().item()
 
-# 打印结果
-print(f"Number of label 0: {count_0}")
-print(f"Number of label 1: {count_1}")
+from pre_dataset import CustomDataset
+dataset_name = "test"
+custom_dataset = CustomDataset(dataset_name=dataset_name,cuda=0,test_flie = "/home/dell/xy/TMC/data/test/5")
+test_loader = DataLoader(dataset=custom_dataset, batch_size=32, shuffle=True)
+    
+    
+    
+    
+    
+import os
+import shutil
+
+# 假设你有一个名为dataloader的数据加载器
+# 假设你有一个名为data_dir的文件夹，其中包含子文件夹0、1、2等，用于存储不同类别的图像
+
+# import os
+# import torchvision.transforms.functional as TF
+# from PIL import Image
+
+# # 假设你有一个名为dataloader的数据加载器
+# # 假设你有一个名为data_dir的文件夹，其中包含子文件夹0、1、2等，用于存储不同类别的图像
+# j = 0
+# for batch_idx, (images, labels) in enumerate(dataloader):
+#     print("label ",labels)
+#     for image, label in zip(images, labels):
+        
+#         # 获取当前图像的标签
+#         label = label.item()
+        
+#         # 构建目标文件夹的路径
+#         target_folder = os.path.join('/home/dell/xy/TMC/data/xy', str(label))
+        
+#         # 确保目标文件夹存在，如果不存在，则创建它
+#         if not os.path.exists(target_folder):
+#             os.makedirs(target_folder)
+        
+#         # 将PyTorch张量转换为PIL图像对象
+#         image_pil = TF.to_pil_image(image)
+        
+#         # 构建目标图像文件的路径
+#         image_filename = f'image_{batch_idx}_{j}.png'
+#         target_image_path = os.path.join(target_folder, image_filename)
+        
+#         # 保存图像到目标路径
+#         image_pil.save(target_image_path)
+#         j = j+1
+
+
+
+
+
+
+import torch.nn as nn
+import torch.optim as optim
+net = Model()
+net = net.cuda(0)
+cross_entropy = nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(net.parameters(),lr = 0.01)
+
+acc=[]
+
+def compute_accuracy(output, label):
+    predictions = output.argmax(dim=1)
+    correct = (predictions == label).float()
+    # True Positive (TP): Prediction is positive and label is also positive
+    TP = ((predictions == 0) & (label == 0)).sum().item()
+    # True Negative (TN): Prediction is negative and label is also negative
+    TN = ((predictions == 1) & (label == 1)).sum().item()
+    # False Positive (FP): Prediction is positive but label is negative
+    FP = ((predictions == 0) & (label == 1)).sum().item()
+    # False Negative (FN): Prediction is negative but label is positive
+    FN = ((predictions == 1) & (label == 0)).sum().item()
+
+    accuracy = (TP + TN) / (TP + TN + FP + FN)
+    return accuracy
+
+def test_core(net, test_loader, cuda):
+    net.eval()  
+    net = net.cuda(cuda)
+    
+    acc = 0
+
+    for batch_num, (image, label) in enumerate(test_loader):
+        image = image.cuda()
+        label = label.cuda()
+        output = net(image)
+        acc += compute_accuracy(output, label)
+    acc /= (batch_num + 1)  # 计算精度
+    return acc
+
+
+for epoch in range(2000): 
+    net = net.train()           
+    for batch_num,(image,label) in enumerate(dataloader):
+       
+        image = image.cuda(0)
+        label = label.cuda(0)
+        output = net(image)
+        entropy_num = cross_entropy(output,label)
+        loss = entropy_num
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+            
+    test_accuracy = test_core(net, test_loader,0)
+    acc.append(test_accuracy)
+    with open('center.txt', 'w') as file:
+    # 将变量写入文件
+        file.write("epoch =  {}\n".format(epoch))
+        file.write("acc =  {}\n".format(acc))
+        #file.write("Delay is : {}\n".format(server_status.delay[int(server_status.NAME)]))
+        
+
+
+
+
+
+
+
+
+
+
+
+#初始化计数器
+# print("class_shot is ",class_shot)
+# count_0 = 0
+# count_1 = 0
+
+# for batch_idx, (images, labels) in enumerate(dataloader):
+#     # 统计每个批次中标签为 0 和 1 的数量
+#     print("label is ",labels)
+#     count_0 += (labels == 0).sum().item()
+#     count_1 += (labels == 1).sum().item()
+
+# # 打印结果
+# print(f"Number of label 0: {count_0}")
+# print(f"Number of label 1: {count_1}")
 
 # # 统计原数据集的类别和数目
 # original_dataset_path = '/home/dell/xy/TMC/data/train/0'

@@ -165,9 +165,10 @@ def ezloader_build_core(cuda):
 def url_build_core(serverIp,serverPort):
     return f'http://{serverIp}:{serverPort}/server'
 
-def req_model_core(serverIp,serverPort):
+def req_model_core(serverIp,serverPort,shot):
     url = f'{url_build_core(serverIp,serverPort)}/req_model'
-    r = requests.post(url,data=pickle.dumps(''))
+    data_to_send = {'shot': shot}  # 将要传输的变量放入字典中
+    r = requests.post(url, data=pickle.dumps(data_to_send))
     return pickle.loads(r.content)
 
 
@@ -197,6 +198,13 @@ def send_model_core(serverIp,serverPort,model,name,cuda,fisher,time,class_shot):
     data = pickle.dumps(data)
     resp = requests.post(url,data)
     return resp.content
+
+
+
+
+
+
+
 
 def masks_build_core(serverIp,serverPort,cuda):
     url = f"{url_build_core(serverIp,serverPort)}/req_mask"
@@ -250,11 +258,15 @@ class Client():
         self.testfile = args.testfile
         self.fisher = 0
         self.cfg = self.req_cfg()
-        self.model = self.req_model()
-        
+       
         self.train_class_list = self.req_class_list()
-        
+ 
         self.train_loader ,self.class_shot = self.train_loader_build()
+      
+
+        self.model = self.req_model()
+  
+        
         #self.test_loader = self.test_loader_build()
         self.anchor_loader = self.anchor_loader_build()
         self.mask = self.mask_build()
@@ -266,16 +278,18 @@ class Client():
     def run_train(self):
         
         t1=time.time()
-        print("client id is : ",self.name)
+        #print("client id is : ",self.name)
         model = self.train()
         model.cpu()
         self.send_model(model)
+       
         t2=time.time()
         #self.time = t2-t1
-        print("time is ",t2-t1)
+       # print("time is ",t2-t1)
     
     def req_model(self):
-        return req_model_core(self.ip,self.port)
+        print("init shot is ",self.class_shot)
+        return req_model_core(self.ip,self.port,self.class_shot)
     
     def req_class_list(self):
         return req_class_list_core(self.ip,self.port)
@@ -285,7 +299,7 @@ class Client():
     
     def train_loader_build(self):
         dataset_path = f'{self.dataroot}/{self.name}'
-        print("dataset_path is ",dataset_path)
+       # print("dataset_path is ",dataset_path)
         train_loader,class_shot = train_loader_build_core(self.cuda,dataset_path,self.cfg['batch_size'],self.train_class_list)
         return train_loader,class_shot
     
@@ -293,7 +307,7 @@ class Client():
         return test_loader_build_core(self.cuda,self.testfile)
     
     def anchor_loader_build(self):
-        print(self.anchor)
+        #print(self.anchor)
         if self.anchor:
             return ezloader_build_core(self.cuda)
         else:
@@ -311,6 +325,8 @@ class Client():
     def send_model(self,model):
         return send_model_core(self.ip,self.port,model,self.name,self.cuda,self.fisher,self.time,self.class_shot)
     
+
+
     def mask_build(self):
         if self.use_mask:
             return mask_build_core(self.model,self.seed,0.9)

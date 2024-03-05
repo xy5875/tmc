@@ -39,9 +39,12 @@ def send_model():
     server_status._instance_lock.release()
     return pickle.dumps("")
 
+
 @server_app.route("/req_model", methods=["POST"])
 def req_model():
-    return server_status.MODEL_ENCODE[server_status.SHOT]
+    client_info = pickle.loads(request.data)
+    shot = client_info['shot']
+    return server_status.MODEL_ENCODE[shot]
 
 @server_app.route("/req_mask", methods=["GET"])
 def req_mask():
@@ -105,7 +108,7 @@ def init_log_core(log_name):
 
 def init_model_save(server_status:Server_Status,args):
     server_status.MODEL_SAVE=args.flie
-    print(server_status.MODEL_SAVE)
+    #print(server_status.MODEL_SAVE)
 
 def init_model_core(server_status:Server_Status):
     model = Model()
@@ -253,7 +256,7 @@ def test(server_status:Server_Status):
     print("test begin")
     #print("111111111111111111111111111111111111111")
     if server_status.SHOT == -1:
-        model = pickle.loads(server_status.MODEL_ENCODE[0])
+        print("error")
     else:
         model = pickle.loads(server_status.MODEL_ENCODE[server_status.SHOT])
     #print("2222222222222222222222222222222222222222")
@@ -281,7 +284,7 @@ def test(server_status:Server_Status):
 def test_loader_build_core(path,shot):
     dataset_name = "test"
     path = os.path.join(path,str(shot))
-    print("test path is ",path)
+    #print("test path is ",path)
     custom_dataset = CustomDataset(dataset_name=dataset_name,cuda=server_status.CUDA,test_flie = path)
     loader = DataLoader(dataset=custom_dataset, batch_size=128, shuffle=True)
     return loader
@@ -357,7 +360,7 @@ def AFGN_window(server_status:Server_Status):
             Delta = (min_last_n-max_last_n)/min_last_n
             server_status.DELTA[server_status.SHOT] = Delta
             print("delta is ",Delta)
-            if(Delta<=0.005):
+            if(Delta<=0.00005):
                 server_status.END[server_status.SHOT] = 1
 
 def test_log_core(acc,server_status:Server_Status):
@@ -380,6 +383,7 @@ def test_log_core(acc,server_status:Server_Status):
     acc_result = sum(server_status.CURR_ACC)/len(server_status.CURR_ACC)
     # print("ACC_TAR IS :",server_status.ACC_TAR)
     # print("ACC_ROUND IS :",server_status.ROUND)
+    
     print("shot is ",server_status.SHOT)
     
 
