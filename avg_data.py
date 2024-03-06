@@ -10,15 +10,15 @@ transform = transforms.Compose([
 ])
 
 # 下载CIFAR-10数据集
-train_dataset = datasets.CIFAR10(root='/home/dell/xy/new/mobicom-TWT/cifar/data', train=True, download=False, transform=transform)
+train_dataset = datasets.CIFAR10(root='/data/xy/TMC/data/all', train=True, download=False, transform=transform)
 
 # 定义存储图像的主文件夹
-base_folder = "/home/dell/xy/new/mobicom-TWT/cifar/new_iid_data"
+base_folder = "/data/xy/TMC/data/TRAIN"
 os.makedirs(base_folder, exist_ok=True)
 
 # 定义10个client
-num_clients = 10
-images_per_client = 500
+num_clients = 1
+images_per_client = 5000
 
 # 使用一个集合来跟踪已选择的图像索引，确保在所有客户端中不选择重复的图像
 selected_images = set()
